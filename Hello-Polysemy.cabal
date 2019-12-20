@@ -29,9 +29,8 @@ executable Hello-Polysemy
                       ,TypeOperators
                       ,TypeFamilies
   build-depends:       base >=4.10 && <5
-                      ,plugins ==1.6.0 
+                      ,hint >= 0.9 
                       ,polysemy
-  allow-newer:         array
   -- hs-source-dirs:
   default-language:    Haskell2010
   ghc-options:         -O2 -flate-specialise -fspecialise-aggressively

@@ -28,4 +28,4 @@ teletypePlusToIO = interpret $ \case
   ReadPlus      -> embed $ ("+" <>) <$> getLine
   WritePlus msg -> embed $ putStrLn $ msg <> "+"
 
-
+type MyEffect = Sem [TeletypePlus, Teletype, Embed IO] ()

@@ -4,29 +4,36 @@
 
 module Main where
 
+import Data.List (intercalate)
 import Polysemy
-import qualified System.Eval.Haskell as Haskell
+import qualified Language.Haskell.Interpreter as H
 
 import Effects
 
-handleFailures :: Either [String] (Maybe (Sem [TeletypePlus, Teletype, Embed IO] ())) -> IO Sem [TeletypePlus, Teletype, Embed IO] ()
-handleFailures (Left ss) = ioError $ userError $ concat ss
-handleFailures (Right Nothing) = ioError $ userError "eval_ returned Right Nothing."
-handleFailures (Right (Just s)) = return s
+handleFailures :: Either H.InterpreterError a -> IO a
+handleFailures (Left l) = ioError $ userError $ message l
+  where
+    message (H.WontCompile es) = intercalate "\n" (header : map unbox es)
+    message e = show e
+    header = "ERROR: Won't compile:"
+    unbox (H.GhcError e) = e
+handleFailures (Right a) = return a
 
-echo :: IO (Sem [TeletypePlus, Teletype, Embed IO] ())
-echo = do
-  userProvided <- readFile "UserProvided.hs"
-  raw <- fmap handleFailures $
-    Haskell.eval_
-      userProvided
-      ["Effects"] --include
-      [] --make flags
-      [] --package.confs
-      [] --include paths
-  return raw
-    
--- echo forever
+interpretation :: String -> H.Interpreter MyEffect
+interpretation s = do
+  H.setImportsQ [("Prelude", Nothing), ("Effects", Nothing)]
+  effect <- H.interpret s (H.as :: MyEffect)
+  return effect
+
+extractProgram :: String -> IO MyEffect
+extractProgram s = do
+  p <- H.runInterpreter $ interpretation s
+  success <- handleFailures p
+  return success
+
 main :: IO ()
-main = runM . teletypeToIO . teletypePlusToIO $ echo
+main = do
+  userProvided <- readFile "UserProvided.hs"
+  userProgram <- extractProgram userProvided
+  runM . teletypeToIO . teletypePlusToIO $ userProgram
 
